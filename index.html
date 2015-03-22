@@ -1,0 +1,87 @@
+<!--
+Dieses einfache Beispiel zeigt wie eine Excel-Datei im dem der App zugewiesenen Dropbox-Verzeichnis
+ausgelesen werden kann. Ausgelesen wird die erste Datei.
+Genutzt werden kann hierzu z.B. die Datei "Schulnoten.xlsx" aus dem Github-Repository
+-->
+<html ng-app>
+<head>
+	<title>Dropbox Testseite</title>
+
+	<!-- Angular JS einbinden -->
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.19/angular.min.js"></script>
+
+	<!-- Dropbox einbinden -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/dropbox.js/0.10.3/dropbox.js"></script>
+
+	<!-- xlsjs einbinden -->
+	<script lang="javascript" src="jszip.js"></script>
+	<script lang="javascript" src="xlsx.js"></script>
+
+	<script>
+	// der Controller für die Webseite
+	function inhaltsangabe($scope, $q) {
+    	// wird aufgerufen wenn aktualisieren.resolve(...) ausgeführt wird. 
+		var aktualisieren = $q.defer();
+		aktualisieren.promise.then(function(daten) {
+	    	$scope.dateiname = daten[0];
+    		$scope.tabelle = daten[1];
+		});
+
+    	// Die Verbindung zu der Dropbox wird hergestellt
+		client = new Dropbox.Client({ key: "a562d9wdqydj4oa" },{token: "yuJf6AR8f2IAAAAAAAA-tXtYUelE0P8FyqhN6X1qpz5Nso8bskZoEq-9enHSHiRn"});
+		client.authenticate(function(error, client) {  
+	   
+	    	// Das dieser App zugewiesene Verzeichnis wird ausgelesen
+  			client.readdir("/", function(error, entries) {
+  		    	// Die erste Datei in dem Verzeichnis wird ausgelesen
+  				client.readFile(entries[0], {blob: true}, function(error, inhalt) {
+  			
+  					// die ausgelesenen Daten werden für die Übergabe einem neuen Array zugewiesen
+  			    	var daten = new Array();
+  			    	
+  			    	// daten[0] wird der Name der Datei zugewiesen
+  			    	daten[0] = entries[0];
+  			    	
+  			    	// daten[1] wird der Tabelleninhalt zugewiesen
+  			    	var reader = new FileReader();
+  			    	
+  			    	// Der unter "inhalt" eingelesene Datei-Inhalt wird für die Verwendung mit xlsx vorbereitet
+  			    	reader.readAsBinaryString(inhalt);
+  			    	reader.onload = function (e) {
+  			    	    var data = e.target.result;
+  			    		var workbook = XLSX.read(data, {type: 'binary'});	
+  			 
+  			            // Nur das erste Tabellenblatt der Excel-Datei wird betrachtet
+  			    		var tabellenblatt = workbook.SheetNames[0];
+  			    		
+  			    		// Ein neues Objekt enthält die Tabelle
+  			    		var tabelle = {};
+  			    		for (var i = 0; i<5 ; i++)
+  			    		{
+  			    		  var zelle1= "A".concat( (i+1).toString() );
+  			    		  var zelle2= "B".concat( (i+1).toString() );
+  			    		  tabelle[i] = {name: workbook.Sheets[tabellenblatt][zelle1].v, note: workbook.Sheets[tabellenblatt][zelle2].v};  			    		  
+  			    		}
+  			    		daten[1] = tabelle;
+  			    		
+  			    		// Übergabe der Tabellendaten in den scope des Controllers veranlassen
+						aktualisieren.resolve(daten); 
+  			    	}			
+        		});
+  			});
+		});
+	}
+	</script>
+</head>
+
+<body ng-controller="inhaltsangabe">
+	<h1>Inhalt der ersten Datei in dem zu dieser App zugewiesenen Verzeichnis</h1>
+	<h2>Der Inhalt der Datei "{{dateiname}}":</h2> 
+
+	<table style="border: 1px solid black;">
+  		<tr ng-repeat="zeile in tabelle">
+     		<td>{{zeile.name}}</td><td style="text-align: center">{{zeile.note}}</td>
+  		</tr>
+	</table>
+ </body>
+</html>
